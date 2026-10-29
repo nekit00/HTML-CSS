@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maailma halvim tunniplaan</title>
+<style>
+  body{margin:0;font-family:"Comic Sans MS","Comic Sans",cursive;background:repeating-linear-gradient(45deg,#ff0 0 20px,#f0f 20px 40px);color:#0a0;}
+  .box{max-width:640px;margin:20px auto;background:#0ff;border:6px dashed red;padding:16px;}
+  h1{font-size:22px;text-align:center;color:#f00;text-shadow:2px 2px #00f;transform:rotate(-2deg)}
+  h2{font-size:15px;color:#800;margin:6px 0}
+  .step{background:#fff8;border:3px dotted #00f;padding:10px;margin:12px 0}
+  .hidden{display:none}
+  button{font-family:inherit;font-size:13px;padding:6px 10px;margin:4px;cursor:pointer;background:#ccc;border:3px outset #999}
+  #wheel{width:220px;height:220px;border-radius:50%;margin:10px auto;border:6px solid #000;position:relative;transition:transform 3s cubic-bezier(.1,.7,.1,1);
+    background:conic-gradient(#f66 0 45deg,#6f6 45deg 90deg,#66f 90deg 135deg,#ff6 135deg 180deg,#f6f 180deg 225deg,#6ff 225deg 270deg,#fa6 270deg 315deg,#aaa 315deg 360deg)}
+  #wheel span{position:absolute;left:50%;top:50%;font-weight:bold;color:#000;font-size:14px}
+  #pointer{text-align:center;font-size:26px;margin-bottom:-14px}
+  .levers{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .lever{width:44px;height:70px;border:3px solid #000;background:#555;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none}
+  .lever.on{background:#0c0}
+  .result{font-size:18px;color:#00f;background:#ff0;padding:8px;border:3px double #000}
+  .tiny{font-size:9px;color:#999}
+  #lesson{font-size:16px}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>📅 MAAILMA HALVIM TUNNIPLAAN™ 📅</h1>
+  <p class="tiny">Tunniplaani nägemiseks läbi kõik 3 sammu. Kiirustamine on keelatud.</p>
+
+  <!-- 1. Binaarotsingu päevavalija, mille nupud vahetavad kohta -->
+  <div class="step" id="s1">
+    <h2>SAMM 1: Vali päev (binaarotsinguga)</h2>
+    <p id="dayQ"></p>
+    <div id="dayBtns"></div>
+  </div>
+
+  <!-- 2. Õnneratas, mis valib tunni juhuslikult -->
+  <div class="step hidden" id="s2">
+    <h2>SAMM 2: Keeruta õnneratast, et valida tund</h2>
+    <p>Vajad <b>järgmist</b> tundi? Keeruta, kuni ratas selle juhuslikult valib. 🍀</p>
+    <div id="pointer">▼</div>
+    <div id="wheel"></div>
+    <div style="text-align:center"><button id="spin">KEERUTA!</button></div>
+    <p id="lesson"></p>
+    <div style="text-align:center"><button id="accept" class="hidden">Jah, see on minu tund</button></div>
+  </div>
+
+  <!-- 3. Hoobade mõistatus, mis peidab ruuminumbri -->
+  <div class="step hidden" id="s3">
+    <h2>SAMM 3: Ruuminumbri nägemiseks lülita KÕIK hoovad roheliseks</h2>
+    <p class="tiny">NB! Iga hoob lülitab ka oma naabreid. Edu.</p>
+    <div class="levers" id="levers"></div>
+    <p id="clicks" class="tiny"></p>
+  </div>
+
+  <div class="step hidden" id="done">
+    <h2>🎉 PALJU ÕNNE! 🎉</h2>
+    <div class="result" id="final"></div>
+    <p class="tiny">Tund võis vahepeal juba alata. Tunniplaani uuesti vaatamiseks alusta otsast.</p>
+    <button onclick="location.reload()">Alusta otsast</button>
+  </div>
+</div>
+
+<script>
+const days=["Esmaspäev","Teisipäev","Kolmapäev","Neljapäev","Reede"];
+const plan={
+  "Esmaspäev":[["08:30","Matemaatika","A-204"],["10:15","Veebirakenduste alused","B-112"],["12:30","Eesti keel","A-108"],["14:15","Kehaline kasvatus","Spordisaal"]],
+  "Teisipäev":[["08:30","Programmeerimine","B-115"],["10:15","Inglise keel","A-301"],["12:30","Disainmõtlemine","B-112"],["14:15","Füüsika","A-210"]],
+  "Kolmapäev":[["08:30","Andmebaasid","B-118"],["10:15","Matemaatika","A-204"],["12:30","Veebirakenduste alused","B-112"],["14:15","Ajalugu","A-105"]],
+  "Neljapäev":[["08:30","Disainmõtlemine","B-112"],["10:15","Eesti keel","A-108"],["12:30","Programmeerimine","B-115"],["14:15","Klassijuhatajatund","A-201"]],
+  "Reede":[["08:30","Inglise keel","A-301"],["10:15","Andmebaasid","B-118"],["12:30","Kehaline kasvatus","Spordisaal"],["14:15","Projektitöö","B-120"]]
+};
+
+/* ---------- SAMM 1: binaarotsing + vahetuvad nupud ---------- */
+let lo=0,hi=days.length-1,chosenDay=null;
+function askDay(){
+  const q=document.getElementById("dayQ"), b=document.getElementById("dayBtns");
+  if(lo===hi){chosenDay=days[lo];q.textContent="Sinu päev on: "+chosenDay+". (Loodetavasti.)";b.innerHTML="";setTimeout(()=>show("s2"),900);return;}
+  const mid=Math.floor((lo+hi)/2);
+  q.textContent="Kas sinu päev on HILJEM kui "+days[mid]+"?";
+  let btns=[["JAH",()=>{lo=mid+1;askDay();}],["EI",()=>{hi=mid;askDay();}]];
+  if(Math.random()<0.5) btns.reverse();   // nupud vahetavad juhuslikult kohta
+  b.innerHTML="";
+  btns.forEach(([t,f])=>{const e=document.createElement("button");e.textContent=t;e.onclick=f;b.appendChild(e);});
+}
+askDay();
+
+/* ---------- SAMM 2: õnneratas ---------- */
+const wheel=document.getElementById("wheel");
+const slots=["1","2","3","4","❌","1","🐸","3"];
+slots.forEach((s,i)=>{const sp=document.createElement("span");const a=i*45+22.5;
+  sp.style.transform=`rotate(${a}deg) translate(-50%,-85px) rotate(${-a}deg)`;sp.textContent=s;wheel.appendChild(sp);});
+let rot=0,picked=null;
+document.getElementById("spin").onclick=()=>{
+  document.getElementById("accept").classList.add("hidden");
+  const idx=Math.floor(Math.random()*8);
+  rot+=360*5+(360-(idx*45+22.5))-(rot%360);
+  wheel.style.transform=`rotate(${rot}deg)`;
+  setTimeout(()=>{
+    const s=slots[idx], l=document.getElementById("lesson");
+    if(s==="❌"){l.textContent="Tunde ei leitud. Proovi uuesti.";return;}
+    if(s==="🐸"){l.textContent="Konn. Tunniplaan ei tunne konna. Keeruta uuesti.";return;}
+    picked=plan[chosenDay][+s-1];
+    l.textContent=s+". tund: "+picked[1]+" (kellaaeg selgub hiljem)";
+    document.getElementById("accept").classList.remove("hidden");
+  },3100);
+};
+document.getElementById("accept").onclick=()=>{show("s3");};
+
+/* ---------- SAMM 3: hoobade mõistatus ---------- */
+const N=6; let state=[], clicks=0;
+do{state=Array.from({length:N},()=>Math.random()<0.5);}while(state.every(x=>x));
+function drawLevers(){
+  const c=document.getElementById("levers");c.innerHTML="";
+  state.forEach((on,i)=>{const d=document.createElement("div");d.className="lever"+(on?" on":"");d.textContent=on?"▲":"▼";
+    d.onclick=()=>{[i-1,i,i+1].forEach(j=>{if(j>=0&&j<N)state[j]=!state[j];});clicks++;drawLevers();check();};c.appendChild(d);});
+  document.getElementById("clicks").textContent="Klõpse: "+clicks;
+}
+function check(){
+  if(state.every(x=>x)){
+    document.getElementById("final").innerHTML=
+      chosenDay+"<br>"+picked[1]+"<br>Kell "+picked[0]+"<br>Ruum: "+picked[2];
+    show("done");
+  }
+}
+drawLevers();
+
+function show(id){document.getElementById(id).classList.remove("hidden");document.getElementById(id).scrollIntoView({behavior:"smooth"});}
+</script>
+</body>
+</html>
